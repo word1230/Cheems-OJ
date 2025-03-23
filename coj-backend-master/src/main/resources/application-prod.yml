@@ -1,0 +1,19 @@
+server:
+  port: 8101
+spring:
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://49.235.157.214:3306/coj
+    username: ikun
+    password: 232386
+  redis:
+    database: 2
+    host: 49.235.157.214
+    port: 6379
+    timeout: 5000
+    password: 232386
+mybatis-plus:
+  configuration:
+    # 生产环境关闭日志
+    log-impl: ''
