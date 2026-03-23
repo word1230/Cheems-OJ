@@ -1,0 +1,157 @@
+/* Apple-inspired global design system */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --color-bg: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-primary: #0066cc;
+  --color-primary-hover: #0077ed;
+  --color-text: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-text-tertiary: #a1a1a6;
+  --color-border: #d2d2d7;
+  --color-border-light: #e8e8ed;
+  --color-danger: #ff3b30;
+  --color-success: #34c759;
+  --color-warning: #ff9f0a;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Arco overrides — buttons */
+.arco-btn-primary {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em;
+  transition: all var(--transition) !important;
+}
+.arco-btn-primary:hover {
+  background: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,102,204,0.3) !important;
+}
+.arco-btn-outline {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition) !important;
+}
+.arco-btn-outline:hover {
+  transform: translateY(-1px);
+}
+.arco-btn {
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font) !important;
+}
+
+/* Arco overrides — inputs */
+.arco-input-wrapper,
+.arco-select-view {
+  border-radius: var(--radius-sm) !important;
+  border-color: var(--color-border) !important;
+  transition: border-color var(--transition), box-shadow var(--transition) !important;
+}
+.arco-input-wrapper:hover,
+.arco-select-view:hover {
+  border-color: var(--color-primary) !important;
+}
+.arco-input-wrapper.arco-input-focus,
+.arco-select-view.arco-select-view-focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(0,102,204,0.12) !important;
+}
+
+/* Arco overrides — table */
+.arco-table {
+  border-radius: var(--radius-md) !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm) !important;
+  background: var(--color-surface) !important;
+}
+.arco-table-th {
+  background: #fafafa !important;
+  font-weight: 600 !important;
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.arco-table-tr:hover .arco-table-td {
+  background: #f5f5f7 !important;
+}
+
+/* Arco overrides — tabs */
+.arco-tabs-nav-tab .arco-tabs-tab.arco-tabs-tab-active {
+  color: var(--color-primary) !important;
+  font-weight: 600 !important;
+}
+.arco-tabs-nav-ink {
+  background: var(--color-primary) !important;
+}
+
+/* Arco overrides — card */
+.arco-card {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--color-border-light) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.arco-card-header {
+  font-weight: 600 !important;
+  color: var(--color-text) !important;
+}
+
+/* Arco overrides — menu */
+.arco-menu-horizontal .arco-menu-item.arco-menu-selected {
+  color: var(--color-primary) !important;
+}
+.arco-menu-horizontal .arco-menu-item.arco-menu-selected::after {
+  background: var(--color-primary) !important;
+}
+
+/* Arco overrides — tag */
+.arco-tag {
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}

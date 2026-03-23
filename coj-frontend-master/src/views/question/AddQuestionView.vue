@@ -225,5 +225,27 @@ const onAnswerChange = (value: string) => {
 
 <style scoped>
 #addQuestionView {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+#addQuestionView h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.03em;
+  margin: 0 0 28px;
+}
+
+#addQuestionView :deep(.arco-form-item-label-col) {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+#addQuestionView :deep(.arco-btn-primary) {
+  border-radius: 10px !important;
+  padding: 0 28px !important;
+  height: 44px !important;
+  font-weight: 500 !important;
 }
 </style>

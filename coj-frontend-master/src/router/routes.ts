@@ -13,8 +13,17 @@ import QuestionSubmitView from "@/views/question/QuestionSubmitView.vue";
 import ViewQuestionView from "@/views/question/ViewQuestionView.vue";
 import UserProfileView from "@/views/user/UserProfileView.vue";
 import UserProfileEdit from "@/views/user/UserProfileEdit.vue";
+import PostListView from "@/views/post/PostListView.vue";
+import PostDetailView from "@/views/post/PostDetailView.vue";
+import PostAddView from "@/views/post/PostAddView.vue";
+import ManagePostView from "@/views/post/ManagePostView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
+  {
+    path: "/",
+    name: "主页",
+    component: HomeView,
+  },
   {
     path: "/user",
     name: "用户",
@@ -53,6 +62,9 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/questions",
     name: "浏览题目",
     component: QuestionsView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: "/question_submit",
@@ -87,6 +99,38 @@ export const routes: Array<RouteRecordRaw> = [
     },
   },
   {
+    path: "/post",
+    name: "帖子",
+    component: PostListView,
+  },
+  {
+    path: "/post/add",
+    name: "发帖",
+    component: PostAddView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
+  {
+    path: "/post/edit",
+    name: "编辑帖子",
+    component: PostAddView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
+  {
+    path: "/post/:id",
+    name: "帖子详情",
+    component: PostDetailView,
+    props: true,
+    meta: {
+      hideInMenu: true,
+    },
+  },
+  {
     path: "/manage/question/",
     name: "管理题目",
     component: ManageQuestionView,
@@ -95,9 +139,12 @@ export const routes: Array<RouteRecordRaw> = [
     },
   },
   {
-    path: "/",
-    name: "主页",
-    component: HomeView,
+    path: "/manage/post",
+    name: "管理帖子",
+    component: ManagePostView,
+    meta: {
+      access: ACCESS_ENUM.ADMIN,
+    },
   },
   // {
   //   path: "/hide",

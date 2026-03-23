@@ -20,8 +20,7 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
  * @author cheems
 
  **/
-// todo 取消注释开启 ES（须先配置 ES）
-//@Document(indexName = "post")
+@org.springframework.data.elasticsearch.annotations.Document(indexName = "post")
 @Data
 public class PostEsDTO implements Serializable {
 

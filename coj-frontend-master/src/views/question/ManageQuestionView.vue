@@ -154,5 +154,7 @@ const doUpdate = (question: Question) => {
 
 <style scoped>
 #manageQuestionView {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 </style>

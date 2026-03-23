@@ -11,6 +11,9 @@
 
 <style>
 #app {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 </style>
 <script setup lang="ts">
