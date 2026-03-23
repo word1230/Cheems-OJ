@@ -38,6 +38,12 @@ public class JudgeServiceImpl implements JudgeService {
     @Value("${codesandbox.type:example}")
     private String type;
 
+    @Value("${codesandbox.auth.access-key:}")
+    private String sandboxAccessKey;
+
+    @Value("${codesandbox.auth.secret-key:}")
+    private String sandboxSecretKey;
+
 
     @Override
     public QuestionSubmit doJudge(long questionSubmitId) {
@@ -64,7 +70,7 @@ public class JudgeServiceImpl implements JudgeService {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
         }
         // 4）调用沙箱，获取到执行结果
-        CodeSandbox codeSandbox = CodeSandboxFactory.newInstance(type);
+        CodeSandbox codeSandbox = CodeSandboxFactory.newInstance(type, sandboxAccessKey, sandboxSecretKey);
         codeSandbox = new CodeSandboxProxy(codeSandbox);
         String language = questionSubmit.getLanguage();
         String code = questionSubmit.getCode();

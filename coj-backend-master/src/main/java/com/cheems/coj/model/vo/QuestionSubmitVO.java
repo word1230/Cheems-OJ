@@ -71,25 +71,6 @@ public class QuestionSubmitVO implements Serializable {
     private QuestionVO questionVO;
 
     /**
-     * 包装类转对象
-     *
-     * @param questionSubmitVO
-     * @return
-     */
-    public static QuestionSubmit voToObj(QuestionSubmitVO questionSubmitVO) {
-        if (questionSubmitVO == null) {
-            return null;
-        }
-        QuestionSubmit questionSubmit = new QuestionSubmit();
-        BeanUtils.copyProperties(questionSubmitVO, questionSubmit);
-        JudgeInfo judgeInfoObj = questionSubmitVO.getJudgeInfo();
-        if (judgeInfoObj != null) {
-            questionSubmit.setJudgeInfo(JSONUtil.toJsonStr(judgeInfoObj));
-        }
-        return questionSubmit;
-    }
-
-    /**
      * 对象转包装类
      *
      * @param questionSubmit

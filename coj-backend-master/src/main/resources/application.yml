@@ -3,7 +3,7 @@
 #
 spring:
   application:
-    name: yuoj-backend
+    name: coj-backend
   # 默认 dev 环境
   profiles:
     active: dev
@@ -31,6 +31,7 @@ spring:
     host: localhost
     port: 6379
     timeout: 5000
+    password: 123456
 server:
   address: 0.0.0.0
   port: 8121
@@ -50,6 +51,14 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名
       logic-delete-value: 1 # 逻辑已删除值（默认为 1）
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
+# ES 配置
+  elasticsearch:
+    uris: http://localhost:9200
+
 # 代码沙箱配置
 codesandbox:
   type: remote
+  # API 签名认证（需与 coj-code-sandbox 中的配置保持一致）
+  auth:
+    access-key: coj-client
+    secret-key: your-strong-secret-key-here

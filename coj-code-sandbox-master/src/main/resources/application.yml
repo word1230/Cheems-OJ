@@ -1,0 +1,10 @@
+server:
+  port: 8090
+#spring:
+#  datasource:
+#    password: 123456
+
+api-auth:
+  access-key: coj-client
+  secret-key: your-strong-secret-key-here
+  timestamp-expire-seconds: 300
