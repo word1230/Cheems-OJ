@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/Project/myproject/Cheems-OJ -maxdepth 3 -type f \\\\\\(-name README.md -o -name CLAUDE.md -o -name package.json -o -name pom.xml -o -name docker-compose*.yml -o -name Dockerfile -o -name .cursorrules -o -name vite.config.ts -o -name vue.config.js \\\\\\))",
+      "Bash(xargs -I{} sh -c \"echo \"\"=== {} ===\"\"; cat \"\"{}\"\"\")",
+      "mcp__universal-db-mcp__get_connection_status",
+      "mcp__universal-db-mcp__get_sample_data",
+      "mcp__universal-db-mcp__execute_query",
+      "Bash('D:/Project/myproject/Cheems-OJ/coj-backend-master/sql/questions_insert.sql':*)",
+      "Bash(find D:/Project/myproject/Cheems-OJ -maxdepth 2 -name README* -o -name .cursorrules -o -name copilot-instructions.md)",
+      "mcp__universal-db-mcp__get_table_info"
+    ]
+  }
+}

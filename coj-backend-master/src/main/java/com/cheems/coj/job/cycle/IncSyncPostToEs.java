@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * @author cheems
 
  */
-@org.springframework.stereotype.Component
+//@org.springframework.stereotype.Component
 @Slf4j
 public class IncSyncPostToEs {
 

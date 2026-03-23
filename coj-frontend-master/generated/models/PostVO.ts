@@ -11,6 +11,7 @@ export type PostVO = {
   favourNum?: number;
   hasFavour?: boolean;
   hasThumb?: boolean;
+  questionId?: number;
   id?: number;
   tagList?: Array<string>;
   thumbNum?: number;

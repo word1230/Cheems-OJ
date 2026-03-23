@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__universal-db-mcp__execute_query",
+      "Bash(\"D:/Project/myproject/Cheems-OJ/coj-backend-master/sql/questions_seed.sql\":*)"
+    ]
+  }
+}

@@ -51,6 +51,11 @@ public class Post implements Serializable {
     private Integer favourNum;
 
     /**
+     * 关联题目 id
+     */
+    private Long questionId;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

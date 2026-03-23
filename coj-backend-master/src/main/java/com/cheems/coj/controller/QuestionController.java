@@ -1,5 +1,6 @@
 package com.cheems.coj.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
 import com.cheems.coj.annotation.AuthCheck;
@@ -11,6 +12,7 @@ import com.cheems.coj.constant.UserConstant;
 import com.cheems.coj.exception.BusinessException;
 import com.cheems.coj.exception.ThrowUtils;
 import com.cheems.coj.model.dto.question.*;
+import com.cheems.coj.model.vo.UserQuestionStatsVO;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitAddRequest;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitQueryRequest;
 import com.cheems.coj.model.entity.Question;
@@ -336,5 +338,27 @@ public class QuestionController {
     }
 
 
+
+    /**
+     * 获取当前登录用户的题目提交统计
+     *
+     * @param request
+     * @return
+     */
+    @GetMapping("/my/stats")
+    public BaseResponse<UserQuestionStatsVO> getMyQuestionStats(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        long submitCount = questionSubmitService.count(
+                new QueryWrapper<QuestionSubmit>().eq("userId", loginUser.getId()));
+        long acceptedCount = questionSubmitService.count(
+                new QueryWrapper<QuestionSubmit>()
+                        .eq("userId", loginUser.getId())
+                        .apply("JSON_UNQUOTE(JSON_EXTRACT(judgeInfo, '$.message')) = {0}",
+                                com.cheems.coj.model.enums.JudgeInfoMessageEnum.ACCEPTED.getValue()));
+        UserQuestionStatsVO stats = new UserQuestionStatsVO();
+        stats.setSubmitCount(submitCount);
+        stats.setAcceptedCount(acceptedCount);
+        return ResultUtils.success(stats);
+    }
 
 }

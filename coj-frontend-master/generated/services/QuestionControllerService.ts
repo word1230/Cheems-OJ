@@ -265,4 +265,21 @@ export class QuestionControllerService {
       },
     });
   }
+
+  /**
+   * getMyQuestionStats
+   * @returns OK
+   * @throws ApiError
+   */
+  public static getMyQuestionStatsUsingGet(): CancelablePromise<any> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/question/my/stats",
+      errors: {
+        401: `Unauthorized`,
+        403: `Forbidden`,
+        404: `Not Found`,
+      },
+    });
+  }
 }

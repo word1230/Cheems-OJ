@@ -68,8 +68,24 @@ export const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/question_submit",
-    name: "浏览题目提交",
+    name: "浏览提交",
     component: QuestionSubmitView,
+  },
+  {
+    path: "/my/posts",
+    name: "我的讨论",
+    component: () => import('@/views/user/MyPostsView.vue'),
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
+  },
+  {
+    path: "/my/favours",
+    name: "我的收藏",
+    component: () => import('@/views/user/MyFavoursView.vue'),
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: "/view/question/:id",
@@ -86,7 +102,7 @@ export const routes: Array<RouteRecordRaw> = [
     name: "创建题目",
     component: AddQuestionView,
     meta: {
-      access: ACCESS_ENUM.USER,
+      access: ACCESS_ENUM.ADMIN,
     },
   },
   {
@@ -94,14 +110,17 @@ export const routes: Array<RouteRecordRaw> = [
     name: "更新题目",
     component: AddQuestionView,
     meta: {
-      access: ACCESS_ENUM.USER,
+      access: ACCESS_ENUM.ADMIN,
       hideInMenu: true,
     },
   },
   {
     path: "/post",
-    name: "帖子",
+    name: "讨论",
     component: PostListView,
+    meta: {
+      hideInMenu: true,
+    },
   },
   {
     path: "/post/add",

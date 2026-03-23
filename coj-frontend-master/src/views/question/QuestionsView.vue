@@ -110,7 +110,6 @@ watchEffect(() => { loadData(); });
 onMounted(() => { loadData(); });
 
 const columns = [
-  { title: "#", dataIndex: "id", width: 80 },
   { title: "题目名称", dataIndex: "title" },
   { title: "标签", slotName: "tags" },
   { title: "通过率", slotName: "acceptedRate", width: 160 },

@@ -2,8 +2,6 @@ package com.coj.codesandbox.auth;
 
 import com.coj.codesandbox.utils.ApiSignatureUtil;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StreamUtils;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import javax.annotation.Resource;
 import javax.servlet.*;
@@ -37,8 +35,8 @@ public class ApiSignatureFilter implements Filter {
             return;
         }
 
-        // 用 ContentCachingRequestWrapper 包装，使 Body 可被多次读取
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        // 用 CachedBodyRequestWrapper 包装，使 Body 可被多次读取
+        CachedBodyRequestWrapper wrappedRequest = new CachedBodyRequestWrapper(request);
 
         String accessKey = wrappedRequest.getHeader(HEADER_ACCESS_KEY);
         String timestamp  = wrappedRequest.getHeader(HEADER_TIMESTAMP);
@@ -71,8 +69,8 @@ public class ApiSignatureFilter implements Filter {
             return;
         }
 
-        // 4. 读取请求体（Java 8 兼容写法，StreamUtils 内部用固定缓冲区循环读取）
-        byte[] bodyBytes = StreamUtils.copyToByteArray(wrappedRequest.getInputStream());
+        // 4. 直接取已缓存的请求体字节
+        byte[] bodyBytes = wrappedRequest.getCachedBody();
 
         // 5. 计算请求体哈希
         String bodyHash = ApiSignatureUtil.sha256Hex(bodyBytes);

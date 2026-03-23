@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.StopWatch;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class ProcessUtils {
             if (exitValue == 0) {
                 System.out.println(opName + "成功");
                 // 分批获取进程的正常输出
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream(), StandardCharsets.UTF_8));
                 List<String> outputStrList = new ArrayList<>();
                 // 逐行读取
                 String compileOutputLine;
@@ -46,7 +47,7 @@ public class ProcessUtils {
                 // 异常退出
                 System.out.println(opName + "失败，错误码： " + exitValue);
                 // 分批获取进程的正常输出
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream(), StandardCharsets.UTF_8));
                 List<String> outputStrList = new ArrayList<>();
                 // 逐行读取
                 String compileOutputLine;
@@ -56,7 +57,7 @@ public class ProcessUtils {
                 executeMessage.setMessage(StringUtils.join(outputStrList, "\n"));
 
                 // 分批获取进程的错误输出
-                BufferedReader errorBufferedReader = new BufferedReader(new InputStreamReader(runProcess.getErrorStream()));
+                BufferedReader errorBufferedReader = new BufferedReader(new InputStreamReader(runProcess.getErrorStream(), StandardCharsets.UTF_8));
                 // 逐行读取
                 List<String> errorOutputStrList = new ArrayList<>();
                 // 逐行读取
@@ -108,6 +109,57 @@ public class ProcessUtils {
             outputStreamWriter.close();
             outputStream.close();
             inputStream.close();
+            runProcess.destroy();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return executeMessage;
+    }
+
+    /**
+     * 执行交互式进程并获取信息（将 input 原样写入 stdin，支持多行输入）
+     *
+     * @param runProcess
+     * @param opName
+     * @param input 测试用例输入字符串，原样写入 stdin
+     * @return
+     */
+    public static ExecuteMessage runInteractProcessAndGetMessage(Process runProcess, String opName, String input) {
+        ExecuteMessage executeMessage = new ExecuteMessage();
+        try {
+            StopWatch stopWatch = new StopWatch();
+            stopWatch.start();
+            OutputStream outputStream = runProcess.getOutputStream();
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+            if (!input.endsWith("\n")) {
+                input = input + "\n";
+            }
+            outputStreamWriter.write(input);
+            outputStreamWriter.flush();
+            outputStreamWriter.close();
+            outputStream.close();
+
+            int exitValue = runProcess.waitFor();
+            stopWatch.stop();
+            executeMessage.setExitValue(exitValue);
+            executeMessage.setTime(stopWatch.getLastTaskTimeMillis());
+            if (exitValue == 0) {
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream(), StandardCharsets.UTF_8));
+                List<String> outputLines = new ArrayList<>();
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    outputLines.add(line);
+                }
+                executeMessage.setMessage(StringUtils.join(outputLines, "\n"));
+            } else {
+                BufferedReader errReader = new BufferedReader(new InputStreamReader(runProcess.getErrorStream(), StandardCharsets.UTF_8));
+                List<String> errLines = new ArrayList<>();
+                String line;
+                while ((line = errReader.readLine()) != null) {
+                    errLines.add(line);
+                }
+                executeMessage.setErrorMessage(StringUtils.join(errLines, "\n"));
+            }
             runProcess.destroy();
         } catch (Exception e) {
             e.printStackTrace();

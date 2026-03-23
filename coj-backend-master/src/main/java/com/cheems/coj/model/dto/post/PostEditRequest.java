@@ -33,5 +33,10 @@ public class PostEditRequest implements Serializable {
      */
     private List<String> tags;
 
+    /**
+     * 关联题目 id
+     */
+    private Long questionId;
+
     private static final long serialVersionUID = 1L;
 }

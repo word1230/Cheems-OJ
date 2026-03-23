@@ -36,21 +36,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import { QuestionControllerService } from "../../generated";
 
 const router = useRouter();
 const store = useStore();
 
+const statsData = ref({ submitCount: 0, acceptedCount: 0 });
+
+onMounted(async () => {
+  if (store.state.user?.loginUser?.id) {
+    const res = await QuestionControllerService.getMyQuestionStatsUsingGet();
+    if (res.code === 0 && res.data) {
+      statsData.value = res.data;
+    }
+  }
+});
+
 const userStats = computed(() => ({
-  solvedProblems: store.state.user?.loginUser?.acceptedNum || 0,
-  submitCount: store.state.user?.loginUser?.submitNum || 0,
+  solvedProblems: statsData.value.acceptedCount,
+  submitCount: statsData.value.submitCount,
   passRate:
-    store.state.user?.loginUser?.submitNum > 0
-      ? (store.state.user.loginUser.acceptedNum /
-          store.state.user.loginUser.submitNum) *
-        100
+    statsData.value.submitCount > 0
+      ? (statsData.value.acceptedCount / statsData.value.submitCount) * 100
       : 0,
 }));
 </script>

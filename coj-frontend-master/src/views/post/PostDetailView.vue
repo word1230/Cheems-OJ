@@ -68,6 +68,14 @@
                 <icon-star />
                 <span>{{ post.hasFavour ? '已收藏' : '收藏' }}（{{ post.favourNum ?? 0 }}）</span>
               </button>
+              <button
+                v-if="isOwner"
+                class="footer-btn"
+                @click="router.push(`/post/edit?id=${post.id}`)"
+              >
+                <icon-edit />
+                <span>编辑</span>
+              </button>
             </div>
             <span class="footer-time">发布于 {{ moment(post.createTime).format('YYYY-MM-DD HH:mm') }}</span>
           </footer>
@@ -98,6 +106,11 @@ const router = useRouter();
 const store = useStore();
 const post = ref<PostVO | null>(null);
 const loading = ref(true);
+
+const isOwner = computed(() => {
+  const loginUser = store.state.user?.loginUser;
+  return loginUser?.id && post.value?.userId && String(loginUser.id) === String(post.value.userId);
+});
 
 const readTime = computed(() => {
   const text = post.value?.content || "";

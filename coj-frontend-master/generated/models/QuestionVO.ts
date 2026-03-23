@@ -20,4 +20,6 @@ export type QuestionVO = {
   updateTime?: string;
   userId?: number;
   userVO?: UserVO;
+  sampleInput?: string;
+  sampleOutput?: string;
 };

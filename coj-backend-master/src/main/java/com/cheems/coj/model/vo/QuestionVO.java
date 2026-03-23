@@ -82,6 +82,16 @@ public class QuestionVO implements Serializable {
     private UserVO userVO;
 
     /**
+     * 示例输入（取第一个判题用例的输入，供用户参考输入格式）
+     */
+    private String sampleInput;
+
+    /**
+     * 示例输出（取第一个判题用例的输出，供用户参考输出格式）
+     */
+    private String sampleOutput;
+
+    /**
      * 包装类转对象
      *
      * @param questionVO
@@ -120,6 +130,21 @@ public class QuestionVO implements Serializable {
         questionVO.setTags(tagList);
         String judgeConfigStr = question.getJudgeConfig();
         questionVO.setJudgeConfig(JSONUtil.toBean(judgeConfigStr, JudgeConfig.class));
+        // 取第一个判题用例的输入作为示例，供用户参考输入格式
+        String judgeCaseStr = question.getJudgeCase();
+        if (judgeCaseStr != null && !judgeCaseStr.isEmpty()) {
+            List<com.cheems.coj.model.dto.question.JudgeCase> judgeCaseList =
+                    JSONUtil.toList(judgeCaseStr, com.cheems.coj.model.dto.question.JudgeCase.class);
+            if (!judgeCaseList.isEmpty()) {
+                com.cheems.coj.model.dto.question.JudgeCase first = judgeCaseList.get(0);
+                if (first.getInput() != null) {
+                    questionVO.setSampleInput(first.getInput());
+                }
+                if (first.getOutput() != null) {
+                    questionVO.setSampleOutput(first.getOutput());
+                }
+            }
+        }
         return questionVO;
     }
 
