@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: coj-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: coj
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./coj-backend-master/sql/create_table.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: coj-redis
+    restart: always
+    command: redis-server --requirepass 123456
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 代码沙箱
+  sandbox:
+    build:
+      context: ./coj-code-sandbox-master
+      dockerfile: Dockerfile
+    container_name: coj-sandbox
+    restart: always
+    ports:
+      - "8090:8090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SERVER_PORT=8090
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # 后端
+  backend:
+    build:
+      context: ./coj-backend-master
+      dockerfile: Dockerfile
+    container_name: coj-backend
+    restart: always
+    ports:
+      - "8101:8101"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/coj?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=123456
+      - SPRING_REDIS_DATABASE=1
+      - CODESANDBOX_TYPE=remote
+      - CODESANDBOX_URL=http://sandbox:8090
+      - CODESANDBOX_AUTH_ACCESS-KEY=coj-client
+      - CODESANDBOX_AUTH_SECRET-KEY=your-strong-secret-key-here
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      sandbox:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:7.17.18
+    container_name: coj-elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # 前端 (Nginx)
+  frontend:
+    build:
+      context: ./coj-frontend-master
+      dockerfile: Dockerfile
+    container_name: coj-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  redis_data:
+  es_data:

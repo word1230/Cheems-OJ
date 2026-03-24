@@ -22,7 +22,7 @@ import java.util.UUID;
  */
 public class RemoteCodeSandbox implements CodeSandbox {
 
-    private static final String SANDBOX_URL = "http://localhost:8090/executeCode";
+    private static final String SANDBOX_URL = "http://sandbox:8090/executeCode";
 
     private static final String HEADER_ACCESS_KEY = "X-Access-Key";
     private static final String HEADER_TIMESTAMP  = "X-Timestamp";

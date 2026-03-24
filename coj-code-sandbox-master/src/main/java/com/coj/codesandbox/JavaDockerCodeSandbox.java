@@ -197,6 +197,13 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
             executeMessage.setMemory(maxMemory[0]);
             executeMessageList.add(executeMessage);
         }
+        // 执行完毕后停止并删除容器
+        try {
+            dockerClient.stopContainerCmd(containerId).exec();
+            dockerClient.removeContainerCmd(containerId).exec();
+        } catch (Exception e) {
+            System.out.println("删除容器异常：" + e.getMessage());
+        }
         return executeMessageList;
     }
 }
