@@ -14,8 +14,8 @@ npm run build
 # Lint
 npm run lint
 
-# Regenerate API client from OpenAPI spec (run from project root)
-npx openapi-typescript-codegen --input http://localhost:8080/api/v3/api-docs --output ./generated --type axios
+# Regenerate API client from OpenAPI spec (backend must be running on 8121)
+npx openapi-typescript-codegen --input http://localhost:8121/api/v2/api-docs --output ./generated --type axios
 ```
 
 ## Architecture

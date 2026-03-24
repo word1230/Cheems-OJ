@@ -258,12 +258,13 @@ public class QuestionController {
     // endregion
 
     /**
-     * 编辑（用户）
+     * 编辑
      *
      * @param questionEditRequest
      * @param request
      * @return
      */
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/edit")
     public BaseResponse<Boolean> editQuestion(@RequestBody QuestionEditRequest questionEditRequest, HttpServletRequest request) {
         if (questionEditRequest == null || questionEditRequest.getId() <= 0) {

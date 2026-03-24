@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__universal-db-mcp__get_schema",
+      "mcp__universal-db-mcp__get_sample_data"
+    ]
+  }
+}

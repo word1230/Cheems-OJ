@@ -1,20 +1,26 @@
 package com.coj.codesandbox;
 
 import cn.hutool.core.io.resource.ResourceUtil;
-import cn.hutool.core.util.ArrayUtil;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.*;
 import com.github.dockerjava.api.model.*;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.coj.codesandbox.model.ExecuteCodeRequest;
 import com.coj.codesandbox.model.ExecuteCodeResponse;
 import com.coj.codesandbox.model.ExecuteMessage;
+import com.github.dockerjava.core.DockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.transport.DockerHttpClient;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +46,11 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         System.out.println(executeCodeResponse);
     }
 
+    private static String escapeShellArg(String arg) {
+        // 用单引号包裹，内部单引号替换为 '"'"'
+        return "'" + arg.replace("'", "'\"'\"'") + "'";
+    }
+
     /**
      * 3、创建容器，把文件复制到容器内
      * @param userCodeFile
@@ -50,10 +61,22 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
     public List<ExecuteMessage> runFile(File userCodeFile, List<String> inputList) {
         String userCodeParentPath = userCodeFile.getParentFile().getAbsolutePath();
         // 获取默认的 Docker Client
-        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+        DockerClientConfig config = DefaultDockerClientConfig
+                .createDefaultConfigBuilder()
+                .build();
+
+        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .maxConnections(100)
+                .connectionTimeout(Duration.ofSeconds(30))
+                .responseTimeout(Duration.ofSeconds(45))
+                .build();
+
+        DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
 
         // 拉取镜像
-        String image = "openjdk:8-alpine";
+        String image = "eclipse-temurin:8-alpine";
         if (FIRST_INIT) {
             PullImageCmd pullImageCmd = dockerClient.pullImageCmd(image);
             PullImageResultCallback pullImageResultCallback = new PullImageResultCallback() {
@@ -82,16 +105,16 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         hostConfig.withMemory(100 * 1000 * 1000L);
         hostConfig.withMemorySwap(0L);
         hostConfig.withCpuCount(1L);
-        hostConfig.withSecurityOpts(Arrays.asList("seccomp=安全管理配置字符串"));
+        // hostConfig.withSecurityOpts(Arrays.asList("seccomp=<profile-json>"));
         hostConfig.setBinds(new Bind(userCodeParentPath, new Volume("/app")));
         CreateContainerResponse createContainerResponse = containerCmd
                 .withHostConfig(hostConfig)
                 .withNetworkDisabled(true)
-                .withReadonlyRootfs(true)
                 .withAttachStdin(true)
                 .withAttachStderr(true)
                 .withAttachStdout(true)
                 .withTty(true)
+                .withCmd("sh", "-c", "sleep infinity")
                 .exec();
         System.out.println(createContainerResponse);
         String containerId = createContainerResponse.getId();
@@ -104,8 +127,7 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         List<ExecuteMessage> executeMessageList = new ArrayList<>();
         for (String inputArgs : inputList) {
             StopWatch stopWatch = new StopWatch();
-            String[] inputArgsArray = inputArgs.split(" ");
-            String[] cmdArray = ArrayUtil.append(new String[]{"java", "-cp", "/app", "Main"}, inputArgsArray);
+            String[] cmdArray = new String[]{"sh", "-c", "printf '%s' " + escapeShellArg(inputArgs) + " | java -cp /app Main"};
             ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(containerId)
                     .withCmd(cmdArray)
                     .withAttachStderr(true)
@@ -136,7 +158,7 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
                         errorMessage[0] = new String(frame.getPayload());
                         System.out.println("输出错误结果：" + errorMessage[0]);
                     } else {
-                        message[0] = new String(frame.getPayload());
+                        message[0] = new String(frame.getPayload()).trim();
                         System.out.println("输出结果：" + message[0]);
                     }
                     super.onNext(frame);
@@ -154,17 +176,19 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
                     maxMemory[0] = Math.max(statistics.getMemoryStats().getUsage(), maxMemory[0]);
                 }
             });
-            statsCmd.exec(statisticsResultCallback);
             try {
                 stopWatch.start();
                 dockerClient.execStartCmd(execId)
                         .exec(execStartResultCallback)
-                        .awaitCompletion(TIME_OUT, TimeUnit.SECONDS);
+                        .awaitCompletion(TIME_OUT, TimeUnit.MILLISECONDS);
                 stopWatch.stop();
                 time = stopWatch.getLastTaskTimeMillis();
+                statisticsResultCallback.close();
                 statsCmd.close();
             } catch (InterruptedException e) {
                 System.out.println("程序执行异常");
+                throw new RuntimeException(e);
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
             executeMessage.setMessage(message[0]);
