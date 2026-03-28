@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref, watch } from "vue";
 import {
   Question,
   QuestionControllerService,
@@ -105,7 +105,7 @@ const loadData = async () => {
 /**
  * 监听 searchParams 变量，改变时触发页面的重新加载
  */
-watchEffect(() => {
+watch(searchParams, () => {
   loadData();
 });
 

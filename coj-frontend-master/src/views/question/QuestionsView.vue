@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref, watch } from "vue";
 import {
   Question,
   QuestionControllerService,
@@ -106,7 +106,9 @@ const loadData = async () => {
   }
 };
 
-watchEffect(() => { loadData(); });
+watch(searchParams, () => {
+  loadData();
+});
 onMounted(() => { loadData(); });
 
 const columns = [
