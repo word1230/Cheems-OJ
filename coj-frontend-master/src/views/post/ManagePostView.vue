@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { PostControllerService, PostVO, PostUpdateRequest } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
 import moment from "moment";
@@ -119,7 +119,9 @@ const loadData = async () => {
   loading.value = false;
 };
 
-watchEffect(() => { loadData(); });
+watch(searchParams, () => {
+  loadData();
+});
 onMounted(() => { loadData(); });
 
 const doSearch = () => {

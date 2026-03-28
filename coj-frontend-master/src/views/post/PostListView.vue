@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref, watch } from "vue";
 import {
   PostControllerService,
   PostQueryRequest,
@@ -115,7 +115,7 @@ const loadData = async () => {
   }
 };
 
-watchEffect(() => {
+watch(searchParams, () => {
   loadData();
 });
 
