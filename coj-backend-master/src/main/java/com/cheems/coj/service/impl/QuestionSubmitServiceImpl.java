@@ -1,21 +1,26 @@
 package com.cheems.coj.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cheems.coj.common.ErrorCode;
 import com.cheems.coj.constant.CommonConstant;
 import com.cheems.coj.exception.BusinessException;
-import com.cheems.coj.judge.JudgeService;
 import com.cheems.coj.mapper.QuestionSubmitMapper;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitAddRequest;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitQueryRequest;
+import com.cheems.coj.model.entity.MqOutbox;
 import com.cheems.coj.model.entity.Question;
 import com.cheems.coj.model.entity.QuestionSubmit;
 import com.cheems.coj.model.entity.User;
+import com.cheems.coj.model.enums.MqOutboxStatusEnum;
 import com.cheems.coj.model.enums.QuestionSubmitLanguageEnum;
 import com.cheems.coj.model.enums.QuestionSubmitStatusEnum;
 import com.cheems.coj.model.vo.QuestionSubmitVO;
+import com.cheems.coj.mq.MqConstants;
+import com.cheems.coj.mq.message.JudgeSubmitMessage;
+import com.cheems.coj.service.MqOutboxService;
 import com.cheems.coj.service.QuestionService;
 import com.cheems.coj.service.QuestionSubmitService;
 import com.cheems.coj.service.UserService;
@@ -23,23 +28,23 @@ import com.cheems.coj.utils.SqlUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
-* @author cheems
-* @description 针对表【question_submit(题目提交)】的数据库操作Service实现
-* @createDate 2023-08-07 20:58:53
-*/
+ * @author cheems
+ * @description 针对表【question_submit(题目提交)】的数据库操作Service实现
+ * @createDate 2023-08-07 20:58:53
+ */
 @Service
 public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper, QuestionSubmit>
-    implements QuestionSubmitService{
-    
+        implements QuestionSubmitService {
+
     @Resource
     private QuestionService questionService;
 
@@ -47,8 +52,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
     private UserService userService;
 
     @Resource
-    @Lazy
-    private JudgeService judgeService;
+    private MqOutboxService mqOutboxService;
 
     /**
      * 提交题目
@@ -57,6 +61,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
      * @param loginUser
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public long doQuestionSubmit(QuestionSubmitAddRequest questionSubmitAddRequest, User loginUser) {
         // 校验编程语言是否合法
@@ -83,14 +88,35 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
         questionSubmit.setStatus(QuestionSubmitStatusEnum.WAITING.getValue());
         questionSubmit.setJudgeInfo("{}");
         boolean save = this.save(questionSubmit);
-        if (!save){
+        if (!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据插入失败");
         }
         Long questionSubmitId = questionSubmit.getId();
         // 执行判题服务
-        CompletableFuture.runAsync(() -> {
-            judgeService.doJudge(questionSubmitId);
-        });
+
+        JudgeSubmitMessage judgeSubmitMessage = new JudgeSubmitMessage();
+        judgeSubmitMessage.setSubmissionId(questionSubmitId);
+        judgeSubmitMessage.setQuestionId(questionId);
+        judgeSubmitMessage.setUserId(userId);
+        judgeSubmitMessage.setTraceId(UUID.randomUUID().toString());
+        judgeSubmitMessage.setCreatedAt(System.currentTimeMillis());
+        judgeSubmitMessage.setSchemaVersion(1);
+
+        //存储消息至发件箱
+        MqOutbox mqOutbox = new MqOutbox();
+        mqOutbox.setEventType(MqConstants.JUDGE_SUBMIT);
+        mqOutbox.setAggregateId(questionSubmitId);
+        mqOutbox.setPayload(JSONUtil.toJsonStr(judgeSubmitMessage));
+        mqOutbox.setStatus(MqOutboxStatusEnum.PENDING.getValue());
+        mqOutbox.setRetryCount(0);
+        mqOutbox.setNextRetryTime(null);
+        mqOutbox.setLastError(null);
+
+        boolean saveOutBox = mqOutboxService.save(mqOutbox);
+        if (!saveOutBox) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据插入失败");
+        }
+
         return questionSubmitId;
     }
 

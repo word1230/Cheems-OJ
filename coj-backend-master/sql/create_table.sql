@@ -103,3 +103,25 @@ create table if not exists post_favour
     index idx_postId (postId),
     index idx_userId (userId)
 ) comment '帖子收藏';
+
+-- MQ消息发件箱表
+CREATE TABLE IF NOT EXISTS `mq_outbox`
+(
+    `id`            BIGINT                             NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `eventType`     VARCHAR(128)                       NOT NULL COMMENT '事件类型（如 JUDGE_SUBMIT）',
+    `aggregateId`   BIGINT                             NOT NULL COMMENT '聚合根 ID（questionSubmitId）',
+    `payload`       TEXT                               NOT NULL COMMENT '消息体（JSON 格式）',
+    `status`        TINYINT  DEFAULT 0                 NOT NULL COMMENT '状态：0-待发送，1-已发送，2-失败',
+    `retryCount`    INT      DEFAULT 0                 NOT NULL COMMENT '已重试次数',
+    `nextRetryTime` DATETIME                           NULL COMMENT '下次重试时间',
+    `lastError`     VARCHAR(1024)                      NULL COMMENT '最后一次错误信息',
+    `createTime`    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL COMMENT '创建时间',
+    `updateTime`    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `isDelete`      TINYINT  DEFAULT 0                 NOT NULL COMMENT '是否删除：0-未删除，1-已删除',
+    PRIMARY KEY (`id`),
+    INDEX `idx_status_nextRetryTime` (`status`, `nextRetryTime`),
+    INDEX `idx_aggregateId` (`aggregateId`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  DEFAULT CHARSET = utf8mb4
+    COMMENT = 'MQ 消息发件箱表（Transactional Outbox Pattern）';

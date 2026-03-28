@@ -60,6 +60,13 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
     @Override
     public List<ExecuteMessage> runFile(File userCodeFile, List<String> inputList) {
         String userCodeParentPath = userCodeFile.getParentFile().getAbsolutePath();
+        // 容器内 tmpCode 路径映射到宿主机路径
+        String hostTmpCodePath = System.getenv("HOST_TMPCODE_PATH");
+        String hostUserCodeParentPath = (hostTmpCodePath != null)
+                ? userCodeParentPath.replace(System.getProperty("user.dir") + "/tmpCode", hostTmpCodePath)
+                : userCodeParentPath;
+        System.out.println("[DEBUG] userCodeParentPath: " + userCodeParentPath);
+        System.out.println("[DEBUG] hostUserCodeParentPath: " + hostUserCodeParentPath);
         // 获取默认的 Docker Client
         DockerClientConfig config = DefaultDockerClientConfig
                 .createDefaultConfigBuilder()
@@ -106,7 +113,7 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         hostConfig.withMemorySwap(0L);
         hostConfig.withCpuCount(1L);
         // hostConfig.withSecurityOpts(Arrays.asList("seccomp=<profile-json>"));
-        hostConfig.setBinds(new Bind(userCodeParentPath, new Volume("/app")));
+        hostConfig.setBinds(new Bind(hostUserCodeParentPath, new Volume("/app")));
         CreateContainerResponse createContainerResponse = containerCmd
                 .withHostConfig(hostConfig)
                 .withNetworkDisabled(true)
