@@ -2,7 +2,6 @@ package com.cheems.coj.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.google.gson.Gson;
 import com.cheems.coj.annotation.AuthCheck;
 import com.cheems.coj.common.BaseResponse;
 import com.cheems.coj.common.DeleteRequest;
@@ -12,7 +11,6 @@ import com.cheems.coj.constant.UserConstant;
 import com.cheems.coj.exception.BusinessException;
 import com.cheems.coj.exception.ThrowUtils;
 import com.cheems.coj.model.dto.question.*;
-import com.cheems.coj.model.vo.UserQuestionStatsVO;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitAddRequest;
 import com.cheems.coj.model.dto.questionsubmit.QuestionSubmitQueryRequest;
 import com.cheems.coj.model.entity.Question;
@@ -20,9 +18,11 @@ import com.cheems.coj.model.entity.QuestionSubmit;
 import com.cheems.coj.model.entity.User;
 import com.cheems.coj.model.vo.QuestionSubmitVO;
 import com.cheems.coj.model.vo.QuestionVO;
+import com.cheems.coj.model.vo.UserQuestionStatsVO;
 import com.cheems.coj.service.QuestionService;
 import com.cheems.coj.service.QuestionSubmitService;
 import com.cheems.coj.service.UserService;
+import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +35,6 @@ import java.util.List;
  * 题目接口
  *
  * @author cheems
-
  */
 @RestController
 @RequestMapping("/question")
@@ -88,6 +87,7 @@ public class QuestionController {
         question.setThumbNum(0);
         boolean result = questionService.save(question);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        questionService.bumpQuestionListCacheVersion();
         long newQuestionId = question.getId();
         return ResultUtils.success(newQuestionId);
     }
@@ -114,6 +114,9 @@ public class QuestionController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean b = questionService.removeById(id);
+        ThrowUtils.throwIf(!b, ErrorCode.SYSTEM_ERROR);
+        questionService.bumpQuestionListCacheVersion();
+
         return ResultUtils.success(b);
     }
 
@@ -150,6 +153,8 @@ public class QuestionController {
         Question oldQuestion = questionService.getById(id);
         ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = questionService.updateById(question);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        questionService.bumpQuestionListCacheVersion();
         return ResultUtils.success(result);
     }
 
@@ -203,14 +208,12 @@ public class QuestionController {
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
-            HttpServletRequest request) {
+                                                               HttpServletRequest request) {
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        Page<Question> questionPage = questionService.page(new Page<>(current, size),
-                questionService.getQueryWrapper(questionQueryRequest));
-        return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+        return ResultUtils.success(questionService.listQuestionVOByPageWithCache(questionQueryRequest, request));
     }
 
     /**
@@ -222,7 +225,7 @@ public class QuestionController {
      */
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listMyQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
-            HttpServletRequest request) {
+                                                                 HttpServletRequest request) {
         if (questionQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -247,7 +250,7 @@ public class QuestionController {
     @PostMapping("/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Question>> listQuestionByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
-                                                   HttpServletRequest request) {
+                                                           HttpServletRequest request) {
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         Page<Question> questionPage = questionService.page(new Page<>(current, size),
@@ -296,6 +299,8 @@ public class QuestionController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = questionService.updateById(question);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        questionService.bumpQuestionListCacheVersion();
         return ResultUtils.success(result);
     }
 
@@ -337,7 +342,6 @@ public class QuestionController {
         // 返回脱敏信息
         return ResultUtils.success(questionSubmitService.getQuestionSubmitVOPage(questionSubmitPage, loginUser));
     }
-
 
 
     /**

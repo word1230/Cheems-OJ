@@ -1,5 +1,7 @@
 package com.cheems.coj.service.impl;
 
+import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,38 +9,59 @@ import com.cheems.coj.common.ErrorCode;
 import com.cheems.coj.constant.CommonConstant;
 import com.cheems.coj.exception.BusinessException;
 import com.cheems.coj.exception.ThrowUtils;
+import com.cheems.coj.mapper.QuestionMapper;
 import com.cheems.coj.model.dto.question.QuestionQueryRequest;
-import com.cheems.coj.model.entity.*;
+import com.cheems.coj.model.entity.Question;
+import com.cheems.coj.model.entity.User;
 import com.cheems.coj.model.vo.QuestionVO;
 import com.cheems.coj.model.vo.UserVO;
 import com.cheems.coj.service.QuestionService;
-import com.cheems.coj.mapper.QuestionMapper;
 import com.cheems.coj.service.UserService;
 import com.cheems.coj.utils.SqlUtils;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.*;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
-* @author cheems
-* @description 针对表【question(题目)】的数据库操作Service实现
-*/
+ * @author cheems
+ * @description 针对表【question(题目)】的数据库操作Service实现
+ */
+@Slf4j
 @Service
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
-    implements QuestionService{
+        implements QuestionService {
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Resource
     private UserService userService;
 
+    private static final String QUESTION_LIST_CACHE_KEY_PREFIX = "coj:question:list:public:";
+    private static final String QUESTION_LIST_CACHE_VERSION_KEY = "coj:question:list:public:version";
+    private static final long QUESTION_LIST_EMPTY_CACHE_TTL_SECONDS = 20L;
+    private static final long QUESTION_LIST_CACHE_TTL_SECONDS = 60L;
+
+
+    private final static Gson GSON = new Gson();
+
     /**
      * 校验题目是否合法
+     *
      * @param question
      * @param add
      */
@@ -151,6 +174,127 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         }).collect(Collectors.toList());
         questionVOPage.setRecords(questionVOList);
         return questionVOPage;
+    }
+
+    @Override
+    public Page<QuestionVO> listQuestionVOByPageWithCache(QuestionQueryRequest questionQueryRequest, HttpServletRequest request) {
+
+        QuestionQueryRequest normalizedRequest = normalizeQuestionQueryRequest(questionQueryRequest);
+        String key = buildQuestionListCacheKey(normalizedRequest);
+
+        //先查缓存
+        try {
+            String value = stringRedisTemplate.opsForValue().get(key);
+            Type type = new TypeToken<Page<QuestionVO>>() {
+            }.getType();
+            if (StringUtils.isNotBlank(value)) {
+                Page<QuestionVO> cachedPage = GSON.fromJson(value, type);
+                if (cachedPage != null) {
+                    log.info("从缓存获取题目列表，key={}", key);
+                    return cachedPage;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("题目列表读取失败，key={}", key, e);
+        }
+
+        //查库
+        long current = normalizedRequest.getCurrent();
+        long pageSize = normalizedRequest.getPageSize();
+
+        Page<Question> page = this.page(new Page<>(current, pageSize), getQueryWrapper(normalizedRequest));
+        Page<QuestionVO> questionVOPage = getQuestionVOPage(page, request);
+
+        //回写缓存
+        try {
+            long ttl = CollectionUtil.isNotEmpty(questionVOPage.getRecords()) ? QUESTION_LIST_CACHE_TTL_SECONDS : QUESTION_LIST_EMPTY_CACHE_TTL_SECONDS;
+            stringRedisTemplate.opsForValue().set(key, GSON.toJson(questionVOPage), ttl, TimeUnit.SECONDS);
+            log.info("写入缓存，key={},ttl={}", key, ttl);
+        } catch (Exception e) {
+            log.warn("写入缓存失败，key={}", key, e);
+        }
+
+        //返回结果
+        return questionVOPage;
+    }
+
+    @Override
+    public void bumpQuestionListCacheVersion() {
+        stringRedisTemplate.opsForValue().increment(QUESTION_LIST_CACHE_VERSION_KEY);
+    }
+
+
+    private long getQuestionListCacheVersion() {
+        String version = stringRedisTemplate.opsForValue().get(QUESTION_LIST_CACHE_VERSION_KEY);
+        if (version == null) {
+            stringRedisTemplate.opsForValue().set(QUESTION_LIST_CACHE_VERSION_KEY, "1");
+            return 1L;
+        }
+        return Long.parseLong(version);
+    }
+
+    private String buildQuestionListCacheKey(QuestionQueryRequest request) {
+
+        String rawKey = "id=" + request.getId()
+                + ";title=" + StringUtils.defaultString(request.getTitle())
+                + ";content=" + StringUtils.defaultString(request.getContent())
+                + ";tags=" + request.getTags()
+                + ";answer=" + StringUtils.defaultString(request.getAnswer())
+                + ";userId=" + request.getUserId()
+                + ";current=" + request.getCurrent()
+                + ";pageSize=" + request.getPageSize()
+                + ";sortField=" + StringUtils.defaultString(request.getSortField())
+                + ";sortOrder=" + StringUtils.defaultString(request.getSortOrder());
+        long questionListCacheVersion = getQuestionListCacheVersion();
+
+        return QUESTION_LIST_CACHE_KEY_PREFIX + questionListCacheVersion + ":" + DigestUtil.md5Hex(rawKey);
+
+    }
+
+    /**
+     * 请求归一化。  避免语义相同但写法不同的请求生成不同的缓存key
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    private QuestionQueryRequest normalizeQuestionQueryRequest(QuestionQueryRequest questionQueryRequest) {
+
+
+        QuestionQueryRequest normalized = new QuestionQueryRequest();
+        if (questionQueryRequest == null) {
+            normalized.setCurrent(1);
+            normalized.setPageSize(10);
+            normalized.setSortOrder(CommonConstant.SORT_ORDER_ASC);
+            return normalized;
+        }
+
+
+        String title = StringUtils.trimToNull(questionQueryRequest.getTitle());
+        List<String> tags = questionQueryRequest.getTags();
+        if (tags != null) {
+            tags = tags.stream()
+                    .map(StringUtils::trimToNull)
+                    .filter(StringUtils::isNotBlank)
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+
+        normalized.setId(questionQueryRequest.getId());
+        normalized.setTitle(title);
+        normalized.setContent(questionQueryRequest.getContent());
+        normalized.setTags(tags);
+        normalized.setAnswer(questionQueryRequest.getAnswer());
+        normalized.setUserId(questionQueryRequest.getUserId());
+        normalized.setCurrent(questionQueryRequest.getCurrent() > 0 ? questionQueryRequest.getCurrent() : 1);
+        normalized.setPageSize(questionQueryRequest.getPageSize() > 0 ? questionQueryRequest.getPageSize() : 10);
+        normalized.setSortField(StringUtils.trimToNull(questionQueryRequest.getSortField()));
+        normalized.setSortOrder(StringUtils.isBlank(questionQueryRequest.getSortOrder()) ? CommonConstant.SORT_ORDER_ASC : questionQueryRequest.getSortOrder());
+
+        return normalized;
+
+
     }
 
 

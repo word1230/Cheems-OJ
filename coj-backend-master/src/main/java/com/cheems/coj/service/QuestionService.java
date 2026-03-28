@@ -10,10 +10,10 @@ import com.cheems.coj.model.vo.QuestionVO;
 import javax.servlet.http.HttpServletRequest;
 
 /**
-* @author cheems
-* @description 针对表【question(题目)】的数据库操作Service
-* 
-*/
+ * @author cheems
+ * @description 针对表【question(题目)】的数据库操作Service
+ *
+ */
 public interface QuestionService extends IService<Question> {
 
 
@@ -32,7 +32,7 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     QueryWrapper<Question> getQueryWrapper(QuestionQueryRequest questionQueryRequest);
-    
+
     /**
      * 获取题目封装
      *
@@ -50,5 +50,21 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     Page<QuestionVO> getQuestionVOPage(Page<Question> questionPage, HttpServletRequest request);
-    
+
+
+    /**
+     * 分页查询题目（缓存）
+     *
+     * @param questionQueryRequest
+     * @param request
+     * @return
+     */
+    Page<QuestionVO> listQuestionVOByPageWithCache(QuestionQueryRequest questionQueryRequest, HttpServletRequest request);
+
+
+    /**
+     * 更新题目列表缓存版本
+     */
+    void bumpQuestionListCacheVersion();
+
 }
