@@ -72,4 +72,9 @@ public class JavaLanguageJudgeStrategy implements JudgeStrategy {
         judgeInfoResponse.setMessage(judgeInfoMessageEnum.getValue());
         return judgeInfoResponse;
     }
+
+    @Override
+    public String getSupportedLanguages() {
+        return "java";
+    }
 }

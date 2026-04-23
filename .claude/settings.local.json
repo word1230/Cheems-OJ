@@ -8,7 +8,8 @@
       "mcp__universal-db-mcp__execute_query",
       "Bash('D:/Project/myproject/Cheems-OJ/coj-backend-master/sql/questions_insert.sql':*)",
       "Bash(find D:/Project/myproject/Cheems-OJ -maxdepth 2 -name README* -o -name .cursorrules -o -name copilot-instructions.md)",
-      "mcp__universal-db-mcp__get_table_info"
+      "mcp__universal-db-mcp__get_table_info",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute"
     ]
   }
 }

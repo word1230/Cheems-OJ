@@ -65,4 +65,9 @@ public class DefaultJudgeStrategy implements JudgeStrategy {
         judgeInfoResponse.setMessage(judgeInfoMessageEnum.getValue());
         return judgeInfoResponse;
     }
+
+    @Override
+    public String getSupportedLanguages() {
+        return "default";
+    }
 }

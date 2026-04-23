@@ -13,4 +13,6 @@ public interface JudgeStrategy {
      * @return
      */
     JudgeInfo doJudge(JudgeContext judgeContext);
+
+    String getSupportedLanguages();
 }
