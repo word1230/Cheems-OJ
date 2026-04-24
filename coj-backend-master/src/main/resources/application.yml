@@ -72,3 +72,14 @@ codesandbox:
     access-key: coj-client
     secret-key: your-strong-secret-key-here
 
+judge:
+  rabbitmq:
+    concurrent-consumer: 1
+    max-concurrent-consumer: 2
+    prefetch-count: 2
+  executor:
+    pool-size: 2
+    max-pool-size: 4
+    queue-capacity: 20
+  sandbox:
+    max-concurrency: 4

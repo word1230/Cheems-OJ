@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -48,6 +49,10 @@ public class JudgeServiceImpl implements JudgeService {
     private String sandboxSecretKey;
 
 
+    @Resource(name = "judgeSemaphore")
+    private Semaphore judgeSemaphore;
+
+
     @Override
     public QuestionSubmit doJudge(long questionSubmitId) {
         // 1）传入题目的提交 id，获取到对应的题目、提交信息（包含代码、编程语言等）
@@ -60,28 +65,40 @@ public class JudgeServiceImpl implements JudgeService {
         if (question == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "题目不存在");
         }
-        // 2）如果题目提交状态不为等待中，就不用重复执行了
-        if (!QuestionSubmitStatusEnum.WAITING.getValue().equals(questionSubmit.getStatus())) {
-            log.info("跳过重复判题，questionSubmitId={},status={}", questionSubmitId, questionSubmit.getStatus());
-            return questionSubmit;
-        }
-        // 3）更改判题（题目提交）的状态为 “判题中”，防止重复执行
-        QuestionSubmit questionSubmitUpdate = new QuestionSubmit();
-        questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.RUNNING.getValue());
-        QueryWrapper<QuestionSubmit> queryWrapper =  new QueryWrapper<>();
-        queryWrapper.eq("id",questionSubmitId)
-                .eq("status",QuestionSubmitStatusEnum.WAITING.getValue());
-        boolean update = questionSubmitService.update(questionSubmitUpdate,queryWrapper);
-        if (!update) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
-        }
 
+
+        boolean acquired = false;
         try {
+            judgeSemaphore.acquire();
+            acquired = true;
+            // 重新读取一次最新状态，避免等待许可期间状态已变化
+            QuestionSubmit latestQuestionSubmit  = questionSubmitService.getById(questionSubmitId);
+            // 2）如果题目提交状态不为等待中，就不用重复执行了
+            if (!QuestionSubmitStatusEnum.WAITING.getValue().equals(latestQuestionSubmit.getStatus())) {
+                log.info("跳过重复判题，questionSubmitId={},status={}", questionSubmitId, latestQuestionSubmit.getStatus());
+                return latestQuestionSubmit;
+            }
+            // 3）更改判题（题目提交）的状态为 “判题中”，防止重复执行
+            QuestionSubmit questionSubmitUpdate = new QuestionSubmit();
+            questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.RUNNING.getValue());
+            QueryWrapper<QuestionSubmit> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("id", questionSubmitId)
+                    .eq("status", QuestionSubmitStatusEnum.WAITING.getValue());
+            boolean update = questionSubmitService.update(questionSubmitUpdate, queryWrapper);
+            if (!update) {
+                QuestionSubmit currentQuestionSubmit = questionSubmitService.getById(questionSubmitId);
+                if (currentQuestionSubmit != null
+                        && !QuestionSubmitStatusEnum.WAITING.getValue().equals(currentQuestionSubmit.getStatus())) {
+                    log.info("跳过重复判题，questionSubmitId={},status={}", questionSubmitId, currentQuestionSubmit.getStatus());
+                    return currentQuestionSubmit;
+                }
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
+            }
             // 4）调用沙箱，获取到执行结果
             CodeSandbox codeSandbox = CodeSandboxFactory.newInstance(type, sandboxAccessKey, sandboxSecretKey);
             codeSandbox = new CodeSandboxProxy(codeSandbox);
-            String language = questionSubmit.getLanguage();
-            String code = questionSubmit.getCode();
+            String language = latestQuestionSubmit.getLanguage();
+            String code = latestQuestionSubmit.getCode();
             // 获取输入用例
             String judgeCaseStr = question.getJudgeCase();
             List<JudgeCase> judgeCaseList = JSONUtil.toList(judgeCaseStr, JudgeCase.class);
@@ -100,7 +117,7 @@ public class JudgeServiceImpl implements JudgeService {
             judgeContext.setOutputList(outputList);
             judgeContext.setJudgeCaseList(judgeCaseList);
             judgeContext.setQuestion(question);
-            judgeContext.setQuestionSubmit(questionSubmit);
+            judgeContext.setQuestionSubmit(latestQuestionSubmit);
             JudgeInfo judgeInfo = judgeManager.doJudge(judgeContext);
             // 6）修改数据库中的判题结果
             questionSubmitUpdate = new QuestionSubmit();
@@ -111,8 +128,10 @@ public class JudgeServiceImpl implements JudgeService {
             if (!update) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
             }
-            QuestionSubmit questionSubmitResult = questionSubmitService.getById(questionSubmitId);
-            return questionSubmitResult;
+            return questionSubmitService.getById(questionSubmitId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("获取判题执行许可被中断", e);
         } catch (Exception e) {
             log.error("判题出错，questionSubmitId={}", questionSubmitId, e);
 
@@ -141,6 +160,10 @@ public class JudgeServiceImpl implements JudgeService {
                 throw (RuntimeException) e;
             }
             throw new RuntimeException(e);
+        } finally {
+            if (acquired) {
+                judgeSemaphore.release();
+            }
         }
     }
 }
