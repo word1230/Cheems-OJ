@@ -1,6 +1,7 @@
 package com.cheems.coj.judge;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cheems.coj.common.ErrorCode;
 import com.cheems.coj.exception.BusinessException;
 import com.cheems.coj.judge.codesandbox.CodeSandbox;
@@ -66,9 +67,11 @@ public class JudgeServiceImpl implements JudgeService {
         }
         // 3）更改判题（题目提交）的状态为 “判题中”，防止重复执行
         QuestionSubmit questionSubmitUpdate = new QuestionSubmit();
-        questionSubmitUpdate.setId(questionSubmitId);
         questionSubmitUpdate.setStatus(QuestionSubmitStatusEnum.RUNNING.getValue());
-        boolean update = questionSubmitService.updateById(questionSubmitUpdate);
+        QueryWrapper<QuestionSubmit> queryWrapper =  new QueryWrapper<>();
+        queryWrapper.eq("id",questionSubmitId)
+                .eq("status",QuestionSubmitStatusEnum.WAITING.getValue());
+        boolean update = questionSubmitService.update(questionSubmitUpdate,queryWrapper);
         if (!update) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
         }
